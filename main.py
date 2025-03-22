@@ -16,6 +16,7 @@ import seaborn as sns
 import os
 
 # The following packages comes from .py functions stored in the same directory
+
 #from data_func import data_preprocessing 
 from pca_func import pca
 from growl_func import growl
@@ -327,7 +328,7 @@ def load_pca_results(dataset_name, kmax, jj, DEMEAN, output_dir="output"):
 
     """
     
-    ################################# crsp_m ######################################
+################################# crsp_m ######################################
     
 # Set dates 
 #start_date = pd.to_datetime("1926-01-31") # Entire CRSP sample
@@ -700,6 +701,7 @@ aug_ret_pivot.to_csv("data/aug_ret_pivot.csv")
 ####################### just load the preprocessed data #######################
 
 # # If you already have the required datasets, just upload:
+
 # crsp_m = pd.read_csv("data/crsp_m.csv", index_col=0)
 # obs_F = pd.read_csv("data/obs_F.csv", index_col=0)
 # ret_panel = pd.read_csv("data/ret_panel.csv", index_col=0)
@@ -931,10 +933,15 @@ for group_id, factor_names in grouped_rows.items():
 from sklearn.model_selection import KFold
 
 # Define the hypter-parameters grid:
-# lambda1_list = np.logspace(-4, 2, 7)  # [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2]
-lambda1_list = np.logspace(0, 3, 4)  # [1e0, 1e1, 1e2, 1e3]
-ramp_delta_list = np.logspace(-2, 1, 4) # [1e-2, 1e-1, 1e0, 1e1]
-ramp_size_list = [10, 50, 100, 150] 
+lambda1_list = np.logspace(-4, 2, 7)  # [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2]
+#lambda1_list = [50, 75, 100, 125, 150]
+lambda1_list = [125, 150, ]
+
+#ramp_delta_list = np.logspace(-2, 1, 4) # [1e-2, 1e-1, 1e0, 1e1]
+ramp_delta_list = [0.5, 0.75, 1.0, 1.25, 1.5]
+
+#ramp_size_list = [10, 50, 100, 150] 
+ramp_size_list = [130, 140, 150, 160, 170]
 
 best_score = np.inf  # or -np.inf if we measure R^2
 best_params = None

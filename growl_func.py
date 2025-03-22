@@ -103,9 +103,9 @@ def prox_growl(V, w):
             
     return out
 
-def growl(X, Y, w=None, weight_type=None, lambda_1=1.0, lambda_2=0.5,
-          ramp_size=1, ramp_delta=1.0, max_iter=1000, tol=1e-4,
-          check_type='relative_cost', scale_objective=False, verbose=False):
+def growl(X, Y, lambda_1=None, lambda_2=None, ramp_size=None, w=None, 
+          max_iter=1000, tol=1e-4, check_type='relative_cost', 
+          scale_objective=False, verbose=False):
     """
     Solve the GrOWL-regularized least-squares problem:
 
@@ -114,26 +114,20 @@ def growl(X, Y, w=None, weight_type=None, lambda_1=1.0, lambda_2=0.5,
     using a FISTA-type proximal splitting scheme.
 
     By default, the user can pass in a custom `w` (length-p array, 
-    non-negative, non-increasing). Alternatively, set `weight_type` 
-    to one of ['lasso', 'linear', 'spike', 'ramp'] to build `w` 
-    automatically from `lambda_1`, `lambda_2`, `ramp_size`, and `ramp_delta`. 
+    non-negative, non-increasing). Alternatively, set the parameter values 
+    'lambda_1', 'lambda_2', ramp_size to define the weight type to be Lasso, 
+    OSCAR, or Ramp:
 
-    The four predefined weight types are:
+    1. Lasso: set ramp_size = 0.
+              w_i = lambda_1  for  i = 1, ..., p
 
-    1. Lasso:
-       w_i = lambda_1  for  i = 1, ..., p
-
-    2. Linear (OSCAR style):
+    2. OSCAR: set ramp_size = n
        w_i = lambda_1 + lambda_2 * (p - i) / p 
        i = 1, ..., p  (largest at i=0, smallest at i=p-1)
 
-    3. Spike:
-       w_1 = lambda_1 + lambda_2 for i = 1;
-       w_i = lambda_1            for i = 2, ..., p
-
-    4. Ramp:
+    3. Ramp: set ramp_size in (0, n).
        For i = 1, ..., ramp_size:
-           w_i = lambda_1 + ramp_delta*(ramp_size - i + 1)
+           w_i = lambda_1 + lambda_2*(ramp_size - i + 1)
        For i = ramp_size + 1, ..., p:
            w_i = lambda_1
 
@@ -141,12 +135,10 @@ def growl(X, Y, w=None, weight_type=None, lambda_1=1.0, lambda_2=0.5,
     X : (n x p) numpy array
     Y : (n x r) numpy array
     w : (p,) array of non-negative, non-increasing weights, or None
-    weight_type : str in ['lasso', 'linear', 'spike', 'ramp'], or None
-        If w is None and weight_type is provided, w is built accordingly.
     lambda_1, lambda_2 : float
-        Used to construct w if weight_type is provided.
-    ramp_size, ramp_delta : float
-        Used with 'ramp' weight_type to build w if w is None.
+        Used to construct w.
+    ramp_size : float in 0-1
+        Used to build w if w is None. 
     max_iter : int
         Maximum number of FISTA iterations.
     tol : float
@@ -165,64 +157,45 @@ def growl(X, Y, w=None, weight_type=None, lambda_1=1.0, lambda_2=0.5,
         The solution estimate.
     cost_hist : list of float
         The (possibly scaled) objective function values at each iteration.
-
-    Note
-    ----
-    - If both `w` and `weight_type` are provided, an error is raised.
-    - If neither is provided, an error is raised.
-    - For 'ramp' or 'spike' or 'linear', the code sorts w in descending order.
     """
 
     # Ensure Y is a matrix with one column if it is a vector
     if Y.ndim == 1:
         Y = Y[:, None]  
 
-    # First, validate arguments
-    if w is not None and weight_type is not None:
-        raise ValueError(
-            "Please provide either `w` (a custom weight vector) or "
-            "`weight_type` (one of 'lasso', 'linear', 'spike', 'ramp'), "
-            "but not both."
-        )
-        
     n, p = X.shape
     _, r = Y.shape
-
-    # If the user has chosen a predefined weight type, build w accordingly
-    if weight_type is not None:
-        w = np.zeros(p, dtype=float)
-        if weight_type.lower() == 'lasso':
-            # 1) Lasso
-            w[:] = lambda_1
-        elif weight_type.lower() == 'linear':
-            # 2) Linear
-            w = lambda_1 + lambda_2 * (p - np.arange(p)) / p
-        elif weight_type.lower() == 'spike':
-            # 3) Spike
-            w[0] = lambda_1 + lambda_2
-            w[1:] = lambda_1
-        elif weight_type.lower() == 'ramp':
-            # 4) Ramp
-            # w[i] = (ramp_size - i)*ramp_delta + lambda_1 for i < ramp_size
-            # w[i] = lambda_1 for i >= ramp_size
-            for i in range(p):
-                if i < ramp_size:
-                    w[i] = (ramp_size - i + 1) * ramp_delta + lambda_1
-                else:
-                    w[i] = lambda_1
-        else:
-            raise ValueError(f"Invalid weight_type: {weight_type}. "
-                             "Choose from ['lasso', 'linear', 'spike', 'ramp'].")
+    
+    # First, validate arguments
+    if w is None:
+        # User did not provide w, so we need lambda_1, lambda_2, and ramp_size
+        if None in (lambda_1, lambda_2, ramp_size):
+            raise ValueError("If 'w' is not provided, 'lambda_1', 'lambda_2', and 'ramp_size' must be specified.")
+            
+        ramp_size = int(np.ceil(ramp_size * p))
+        ramp_size = min(ramp_size, p)  # ensure ramp_size <= p
+        ramp_size = max(ramp_size, 0)  # ensure ramp_size >= 0
         
-        # Ensure non-increasing sort if needed
-        # (These formulas are already in non-increasing order if lambda_2 >= 0, ramp_delta >= 0)
-        # But just to be safe, we can sort descending:
-        w = np.sort(w)[::-1]
-
-    elif w is None:
-        raise ValueError(
-            "You must provide either a custom `w` or specify a `weight_type`."
-        )
+        # Set the weight vector using the parameters provided by user.  
+        # ramp_size = 0       ---> LASSO procedure
+        # ramp_size = 1       ---> OSCAR (linear decay) procedure
+        # ramp_size = in (0, 1) ---> The first 20% (e.g. ramp_size = 0.2) 
+        #                            follow linear decay, while the remaining
+        #                            ones are equal to lambda_2.
+        for i in range(p):
+            if i < ramp_size:
+                w[i] = lambda_1 + lambda_2 * (ramp_size - i + 1)
+            else:
+                w[i] = lambda_1
+                
+    else: # User provided w, so ignore lambda_1, lambda_2, ramp_size
+        if any(param is not None for param in (lambda_1, lambda_2, ramp_size)):
+            raise ValueError("If 'w' is provided, do not specify 'lambda_1', 'lambda_2', or 'ramp_size'.")
+        
+    # Ensure non-increasing sort if needed
+    # (These formulas are already in non-increasing order if lambda_2 >= 0, ramp_delta >= 0)
+    # But just to be safe, we can sort descending:
+    w = np.sort(w)[::-1]
 
     # Lipschitz constant L for the gradient of f(B) = ||Y - X B||^2
     # The gradient is 2 X^T(X B - Y). So L = 2*spectral_norm(X^T X) = 2||X||^2
@@ -420,7 +393,8 @@ if __name__ == "__main__":
 
 
     ############################### OWL example #############################
-
+    from sklearn.linear_model import Lasso
+    
     np.random.seed(46)
 
     n = 100
@@ -451,7 +425,7 @@ if __name__ == "__main__":
     w = np.linspace(1.0, 0.2, p)
     w = np.sort(w)[::-1]
 
-    B_hat_owl, _ = growl(X, Y, w=w, max_iter=2000, tol=1e-7)
+    B_hat_owl, _ = growl(X, y, w=w, max_iter=2000, tol=1e-7)
     b_hat_owl = B_hat_owl.ravel()
 
     lasso_sklearn = Lasso(alpha=0.1, fit_intercept=False, max_iter=10000)
