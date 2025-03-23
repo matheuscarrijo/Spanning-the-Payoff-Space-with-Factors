@@ -115,29 +115,38 @@ def growl(X, Y, lambda_1=None, lambda_2=None, ramp_size=None, w=None,
 
     By default, the user can pass in a custom `w` (length-p array, 
     non-negative, non-increasing). Alternatively, set the parameter values 
-    'lambda_1', 'lambda_2', ramp_size to define the weight type to be Lasso, 
-    OSCAR, or Ramp:
+    'lambda_1', 'lambda_2', 'ramp_size' to define the weight vector. The later 
+    is a fraction of the design matrix X columns the user want to use to apply
+    linear decay (oscar-type weights).
+        
+                    ramp_size = int(np.ceil(ramp_size * p))
+                    For i = 1, ..., ramp_size:
+                        w_i = lambda_1 + lambda_2*(ramp_size - i + 1)
+                    For i = ramp_size + 1, ..., p:
+                        w_i = lambda_1
 
     1. Lasso: set ramp_size = 0.
               w_i = lambda_1  for  i = 1, ..., p
 
-    2. OSCAR: set ramp_size = n
-       w_i = lambda_1 + lambda_2 * (p - i) / p 
-       i = 1, ..., p  (largest at i=0, smallest at i=p-1)
+    2. OSCAR: set ramp_size = p
+       w_i = lambda_1 + lambda_2 * (p - i)
+       i = 0, ..., p-1  (largest at i=0, smallest at i=p-1)
 
-    3. Ramp: set ramp_size in (0, n).
-       For i = 1, ..., ramp_size:
-           w_i = lambda_1 + lambda_2*(ramp_size - i + 1)
-       For i = ramp_size + 1, ..., p:
+    3. Ramp: set ramp_size in (0, 1).
+       For i = 1, ..., ramp_size = int(np.ceil(ramp_size * p)):
+           w_i = lambda_1 + lambda_2*(ramp_size = int(np.ceil(ramp_size * p)) - i + 1)
+       For i = ramp_size = int(np.ceil(ramp_size * p)) + 1, ..., p:
            w_i = lambda_1
 
     Args:
     X : (n x p) numpy array
     Y : (n x r) numpy array
     w : (p,) array of non-negative, non-increasing weights, or None
-    lambda_1, lambda_2 : float
+    lambda_1 : float or None
         Used to construct w.
-    ramp_size : float in 0-1
+    lambda_2 : float or None
+        Used to construct w.
+    ramp_size : float in [0, 1] or None
         Used to build w if w is None. 
     max_iter : int
         Maximum number of FISTA iterations.
@@ -167,6 +176,10 @@ def growl(X, Y, lambda_1=None, lambda_2=None, ramp_size=None, w=None,
     _, r = Y.shape
     
     # First, validate arguments
+    
+    if check_type not in {'absolute_cost', 'relative_cost', 'solution_diff'}:
+        raise ValueError(f"Invalid check_type: {check_type}")
+    
     if w is None:
         # User did not provide w, so we need lambda_1, lambda_2, and ramp_size
         if None in (lambda_1, lambda_2, ramp_size):
@@ -182,13 +195,20 @@ def growl(X, Y, lambda_1=None, lambda_2=None, ramp_size=None, w=None,
         # ramp_size = in (0, 1) ---> The first 20% (e.g. ramp_size = 0.2) 
         #                            follow linear decay, while the remaining
         #                            ones are equal to lambda_2.
+        w = np.zeros(p)
         for i in range(p):
             if i < ramp_size:
-                w[i] = lambda_1 + lambda_2 * (ramp_size - i + 1)
+                w[i] = lambda_1 + lambda_2 * (ramp_size - i)
             else:
                 w[i] = lambda_1
                 
-    else: # User provided w, so ignore lambda_1, lambda_2, ramp_size
+    else: # User provided w, so validate w and ignore lambdas and ramp_size
+        w = np.asarray(w)
+        if len(w) != p:
+            raise ValueError(f"Provided weight vector w must have length {p}")
+        if np.any(w < 0):
+            raise ValueError("All elements of w must be non-negative.")
+    
         if any(param is not None for param in (lambda_1, lambda_2, ramp_size)):
             raise ValueError("If 'w' is provided, do not specify 'lambda_1', 'lambda_2', or 'ramp_size'.")
         

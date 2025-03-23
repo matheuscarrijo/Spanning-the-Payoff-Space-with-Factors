@@ -822,31 +822,35 @@ beta_mten = (pd.DataFrame(mten.coef_, columns=obs_F.columns,
 
 ################################## GrOWL ######################################
 
-# B_growl_linear, _ = growl(obs_F_normalized, PCs_normalized, w=None, 
-#                           weight_type='ramp', lambda_1=1.0, lambda_2=0.5,
-#                           ramp_size=70, ramp_delta=1, max_iter=1000, tol=1e-4)
+# B_growl_oscar, _ = growl(obs_F_normalized, PCs_normalized, w=None, 
+#                           lambda_1=1.0, lambda_2=0.5, ramp_size=1, 
+#                           max_iter=1000, tol=1e-4)
 
-B_growl_linear, _ = growl(obs_F_normalized, PCs_normalized,
-                          weight_type='ramp',
-                          lambda_1=100,
-                          ramp_size=1,
-                          ramp_delta=150,
-                          max_iter=1500,
-                          tol=1e-2,
-                          check_type='solution_diff',
-                          scale_objective=True,
-                          verbose=True)
+B_growl_oscar, _ = growl(obs_F_normalized, PCs_normalized,
+                         lambda_1=140,
+                         lambda_2=1/3,
+                         ramp_size=1, # Then, OSCAR-like regularization
+                         max_iter=10000,
+                         tol=1e-4,
+                         check_type='solution_diff',
+                         scale_objective=True,
+                         verbose=True)
 
+B_growl_oscar = pd.DataFrame(B_growl_oscar, index=obs_F.columns, 
+                              columns=gamma_hat.index)
 
-B_growl_linear = (pd.DataFrame(B_growl_linear, columns=obs_F.columns, 
+B_growl_oscar.to_csv("output/B_growl_oscar.csv")
+
+# Transform in pandas dataframe without zero columns
+B_growl_oscar_without_zeros = (pd.DataFrame(B_growl_oscar.T, columns=obs_F.columns, 
                               index=gamma_hat.index)
-                              .loc[:, (pd.DataFrame(B_growl_linear.T, 
+                              .loc[:, (pd.DataFrame(B_growl_oscar.T, 
                                        columns=obs_F.columns) != 0)
                               .any(axis=0)])
 
 # Heatmap of beta_estimated
 plt.figure(figsize=(12, 8))
-sns.heatmap(B_growl_linear, cmap="coolwarm", 
+sns.heatmap(B_growl_oscar, cmap="coolwarm", 
             annot=False, cbar=True)
 #plt.title("Heatmap of Factor loadings Across Firms (Multi-Task LASSO)", 
 #          fontsize=16)
@@ -856,8 +860,22 @@ plt.ylabel("Firms (permno)", fontsize=16)
 #            dpi=300, bbox_inches='tight')  
 plt.show()
 
+# Heatmap of beta_estimated withou mkt-rf (since it can affect the 
+# visualization because it has big values compared to other factors)
+plt.figure(figsize=(12, 8))
+sns.heatmap(B_growl_oscar.iloc[:,1:], cmap="coolwarm", 
+            annot=False, cbar=True)
+#plt.title("Heatmap of Factor loadings Across Firms (Multi-Task LASSO)", 
+#          fontsize=16)
+plt.xlabel("Observed Factors", fontsize=16)
+plt.ylabel("Firms (permno)", fontsize=16)
+#plt.savefig('Imgs/.pdf', 
+#            dpi=300, bbox_inches='tight')  
+plt.show()
+
+
 # Compute the correlation matrix
-corr_matrix = B_growl_linear.corr()
+corr_matrix = B_growl_oscar.corr()
 # Plot the heatmap
 plt.figure(figsize=(12, 10))
 sns.heatmap(corr_matrix, annot=False, cmap='coolwarm', 
@@ -867,10 +885,10 @@ plt.tight_layout()
 plt.show()
 
 ################################# GROUPS ######################################
-from scipy.cluster.hierarchy import fcluster, linkage
+from scipy.cluster.hierarchy import fcluster, linkage, dendrogram
 
-df = pd.read_csv("B_growl_linear.csv")
-# df = B_growl_linear
+df = pd.read_csv("B_growl_oscar.csv")
+# df = B_growl_oscar
 
 # Extract the coefficient matrix (excluding the first column, which contains row names)
 coef_matrix = df.iloc[:, 1:].to_numpy()
@@ -958,10 +976,9 @@ for lam1 in lambda1_list:
                 Y_train, Y_val = PCs_normalized[train_index], PCs_normalized[val_index]
                 
                 B_candidate, _ = growl(X_train, Y_train,
-                                       weight_type='ramp',
                                        lambda_1=lam1,
+                                       lambda_2=rs,
                                        ramp_size=rs,
-                                       ramp_delta=rd,
                                        max_iter=100,
                                        tol=1e-2,
                                        check_type='solution_diff',
