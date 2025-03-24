@@ -8,22 +8,11 @@ from sklearn import linear_model
 from sklearn.preprocessing import StandardScaler
 import pandas_datareader as pdr
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-from matplotlib.colors import ListedColormap
-import sqlite3
-from datetime import datetime
 import seaborn as sns
 import os
 
-# The following packages comes from .py functions stored in the same directory
-
-#from data_func import data_preprocessing 
 from pca_func import pca
 from growl_func import growl
-from pca_aux.prepare_missing import prepare_missing as pm
-from pca_aux.remove_outliers import remove_outliers as ro
-from pca_aux.factors_em import factors_em as fem
-from pca_aux.mrsq import mrsq
 
 # Ignore some types of warnings
 import warnings
