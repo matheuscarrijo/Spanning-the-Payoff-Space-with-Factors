@@ -1,0 +1,189 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2821
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0                                   CPI data from FRED\
+                                  \
+    Consumer Price Index (CPI) data from the Federal Reserve Economic Data \
+    (FRED).\
+    \
+    - The dataset "CPIAUCNS" refers to the Consumer Price Index for All Urban \
+      Consumers, not Seasonally Adjusted, which measures inflation by tracking \
+      price changes of goods and services consumed by urban households.\
+    - `pdr.DataReader()` fetches this data from the "fred" source.\
+    - The date index is reset to a standard column named "month" to facilitate\
+      merging with other datasets.\
+    - The column is renamed from "CPIAUCNS" to "cpi" for clarity.\
+    - The CPI values are normalized by dividing them by the last available CPI \
+      value, making the series relative to the most recent month.\
+    - The "month" column is converted to represent the last day of each month \
+      to ensure consistency in time-based analyses.\
+\
+    ---------------------------------------------------------------------------\
+    \
+                          Risk-free rate (RF) from FF database\
+                          \
+    Below we retrieves the risk-free rate (RF) data from the Fama-French \
+    database for the period between 1972-12-31 and the predefined end date. \
+    \
+    - The data is extracted using `pdr.DataReader()` from the "famafrench" \
+      source, \
+      specifically from the "F-F_Research_Data_Factors" dataset.\
+    - The first element of the returned dictionary (`[0]`) contains monthly \
+      factor data, \
+      from which only the "RF" (risk-free rate) column is selected.\
+    - The RF values are originally in percentage format, so they are divided by\
+      100 to \
+      convert them to decimal form.\
+    - The date index is reset to a standard column called "month".\
+    - The "month" column is explicitly converted to datetime format to avoid \
+      inconsistencies.\
+    - Column names are converted to lowercase for uniformity.\
+    - Finally, the "month" column is converted to represent the last day of \
+      each month to maintain consistency with other financial time series \
+      datasets.\
+      \
+    ---------------------------------------------------------------------------\
+\
+                               CRSP stock returns:\
+                               \
+    Below the code processes the CRSP monthly stock data by loading, filtering,\
+    and cleaning it in chunks to handle large datasets efficiently. \
+    \
+    Data Loading and Cleaning\
+       - Reads the CRSP monthly stock dataset in chunks to optimize memory usage.\
+       - Keeps only relevant columns and ensures numeric conversion where \
+         necessary.\
+       - Converts the date column to datetime format and adjusts all dates to \
+         end-of-month.\
+    \
+    Data Filtering\
+       - Filters stocks listed on NYSE, AMEX, and NASDAQ.\
+       - Selects only common stocks (SHRCD 10 and 11).\
+       - Excludes financial firms (SIC codes 6000-6999).\
+       - Adjusts delisting returns using methodologies from Shumway (1997) and \
+         Shumway & Warther (1999).\
+       - Removes stocks with fewer than 60 monthly observations.\
+       - Retains only stocks with a minimum historical price above $5.\
+    \
+    Return Adjustments\
+       - Adjusts returns based on delisting returns.\
+       - Computes excess returns by subtracting the risk-free rate from raw \
+         returns.\
+    \
+    Market Capitalization Calculation\
+       - Computes market capitalization as `SHROUT * PRC` and rounds to two \
+         decimals.\
+    \
+    Categorical Variable Transformations\
+       - Maps exchange codes to readable names (NYSE, AMEX, NASDAQ).\
+       - Converts SIC codes into industry sector classifications.\
+          \
+    ---------------------------------------------------------------------------\
+    \
+                                  Observed factors\
+        \
+       This script part processes the Market Factor (MKT-RF) from the\
+       Fama-French library and integrates it with observed factors from the\
+       Global Factor Data (GFD).\
+    \
+    Fama-French Market Factor (MKT-RF)\
+       - The Fama-French market factor is retrieved from the\
+         "F-F_Research_Data_Factors" dataset.\
+       - The data is extracted starting from December 31, 1972.\
+       - The factor is converted from percentage format to decimal.\
+       - The date column is reformatted and set to the last day of each month.\
+    \
+    Observed Factors from Global Factor Data (GFD)\
+       - The dataset is loaded from a CSV file containing multiple factors.\
+       - The 'date' column is converted to datetime format.\
+       - Data is filtered to start from March 31, 1973.\
+       - A pivot table is created, restructuring the data to have factors as\
+         columns.\
+    \
+    Merging Fama-French and GFD Factors\
+       - The 'month' column in the market factor dataset is converted to\
+         datetime.\
+       - The observed factors dataset is temporarily reset to ensure proper\
+         merging.\
+       - The two datasets are merged on the corresponding date columns using a\
+         left join.\
+       - The final dataset is reorganized, ensuring 'mkt-rf' appears\
+         immediately after the date.\
+       - The 'date' column is restored as the index, ensuring it remains a\
+         properly formatted datetime index.\
+    \
+    The resulting dataset combines the MKT-RF factor from Fama-French with\
+    various observed factors from GFD.\
+    \
+    ---------------------------------------------------------------------------\
+    \
+                                ret_panel\
+    \
+    This dataset constructs a panel of excess returns by organizing CRSP stock\
+    return data into a structured time series format.\
+    \
+    - The dataset is structured as a pivot table with stock identifiers (permno)\
+      as columns and months as index values.\
+    - The data represents excess returns (returns adjusted for risk-free rate).\
+    - The resulting dataset facilitates analysis of return time series across\
+      multiple stocks.\
+    - A transformation row is added to indicate that all variables are directly\
+      used in the analysis.\
+    \
+    ---------------------------------------------------------------------------\
+    \
+                                ret_panel_comnam\
+    \
+    This dataset is an alternative representation of `ret_panel`, where columns\
+    are labeled using company names instead of stock identifiers (permno).\
+    \
+    - The most recent company name associated with each permno is extracted.\
+    - The column names of `ret_panel` are replaced with their corresponding\
+      company names.\
+    - This dataset allows for a more interpretable presentation of return time\
+      series data.\
+    \
+    ---------------------------------------------------------------------------\
+    \
+                                ret_pivot\
+    \
+    This dataset is a filtered version of `ret_panel`, removing the row\
+    containing transformation codes.\
+    \
+    - The dataset retains only the time series data of excess returns.\
+    - The first column is reformatted to be a proper datetime index.\
+    - It is primarily used in return-based analyses that do not require\
+      transformation codes.\
+    \
+    ---------------------------------------------------------------------------\
+    \
+                                aug_ret_pivot\
+    \
+    This dataset augments `ret_pivot` by including one-period lagged excess\
+    returns for each stock.\
+    \
+    - The lagged excess returns are computed by shifting the original dataset\
+      by one period.\
+    - Lagged columns are renamed with a `_lag1` suffix for clarity.\
+    - The first row, containing NaN values due to lagging, is dropped.\
+    - This dataset enables analyses that require historical return dependencies,\
+      such as autoregressive modeling.\
+    \
+    ---------------------------------------------------------------------------\
+    \
+                                aug_ret_panel\
+    \
+    This dataset extends `aug_ret_pivot` by incorporating transformation codes\
+    for estimation purposes.\
+    \
+    - A transformation row is inserted, indicating that all variables are\
+      directly used in estimation.\
+    - The structure mirrors `aug_ret_pivot`, except for the added \
+      transformation row.\
+    - This dataset is specifically formatted for regression and machine \
+      learning\
+      applications requiring predefined transformations.}

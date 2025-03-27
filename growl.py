@@ -103,9 +103,9 @@ def prox_growl(V, w):
             
     return out
 
-def growl(X, Y, lambda_1=None, lambda_2=None, ramp_size=None, w=None, 
-          max_iter=1000, tol=1e-4, check_type='relative_cost', 
-          scale_objective=False, verbose=False):
+def growl_fista(X, Y, lambda_1=None, lambda_2=None, ramp_size=None, w=None, 
+                max_iter=1000, tol=1e-4, check_type='relative_cost', 
+                scale_objective=False, verbose=False):
     """
     Solve the GrOWL-regularized least-squares problem:
 
@@ -339,10 +339,10 @@ if __name__ == "__main__":
     Y_toy = X @ B_true_toy + 0.3 * np.random.randn(n, r)
     
     # Estimate B using different weights
-    B_est_toy, cost_hist_toy = growl(X, Y_toy, weight_type='lasso')
-    B_est_linear, cost_hist_linear = growl(X, Y_toy, weight_type='linear')
-    B_est_spike, cost_hist_spike = growl(X, Y_toy, weight_type='spike')
-    B_est_ramp, cost_hist_ramp = growl(X, Y_toy, weight_type='ramp')
+    B_est_toy, cost_hist_toy = growl_fista(X, Y_toy,)
+    B_est_linear, cost_hist_linear = growl_fista(X, Y_toy)
+    B_est_spike, cost_hist_spike = growl_fista(X, Y_toy)
+    B_est_ramp, cost_hist_ramp = growl_fista(X, Y_toy)
 
     # Apply Group Lasso using sklearn's MultiTaskLasso
     lasso_model = MultiTaskLasso(alpha=1, fit_intercept=False, max_iter=1000)
@@ -445,7 +445,7 @@ if __name__ == "__main__":
     w = np.linspace(1.0, 0.2, p)
     w = np.sort(w)[::-1]
 
-    B_hat_owl, _ = growl(X, y, w=w, max_iter=2000, tol=1e-7)
+    B_hat_owl, _ = growl_fista(X, y, w=w, max_iter=2000, tol=1e-7)
     b_hat_owl = B_hat_owl.ravel()
 
     lasso_sklearn = Lasso(alpha=0.1, fit_intercept=False, max_iter=10000)
@@ -453,7 +453,7 @@ if __name__ == "__main__":
     b_hat_lasso_sklearn = lasso_sklearn.coef_
 
     w_lasso = np.ones(p)
-    B_hat_lasso, _ = growl(X, y, w=w_lasso, max_iter=2000, tol=1e-7)
+    B_hat_lasso, _ = growl_fista(X, y, w=w_lasso, max_iter=2000, tol=1e-7)
     b_hat_lasso = B_hat_lasso.ravel()
 
     plt.figure(figsize=(15, 4))

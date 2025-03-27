@@ -4,7 +4,7 @@ from pca_aux.remove_outliers import remove_outliers as ro
 from pca_aux.factors_em import factors_em as fem
 from pca_aux.mrsq import mrsq
 
-def pca(data, kmax=99, jj=2, DEMEAN=2):
+def pca_stock_watson(data, kmax=99, jj=2, DEMEAN=2):
     """
     Estimate factors using Principal Component Analysis (PCA) following 
     Stock and Watson (2002).
