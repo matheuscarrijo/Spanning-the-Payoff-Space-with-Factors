@@ -14,7 +14,8 @@ def crsp_m(data_path, start_date="1973-01-31", end_date="2023-12-31",
     - data_path (str): Path to the CRSP dataset (.csv).
     - start_date (str): Start date in 'YYYY-MM-DD' format.
     - end_date (str): End date in 'YYYY-MM-DD' format.
-    - missing_data_info (bool): If True, return a DataFrame with missing data summary.
+    - missing_data_info (bool): If True, return a DataFrame with missing data 
+      summary.
     
     Returns:
     - pd.DataFrame: Cleaned CRSP monthly data.
@@ -30,6 +31,11 @@ def crsp_m(data_path, start_date="1973-01-31", end_date="2023-12-31",
     
     start_date = pd.to_datetime(start_date) # NASDAQ birth is 1972-12-31
     end_date = pd.to_datetime(end_date)
+    
+    # Guard against start_date earlier than Fama-French data availability
+    MIN_START_DATE = pd.to_datetime("1926-07-01")
+    if start_date < MIN_START_DATE:
+        raise ValueError(f"start_date must be on or after {MIN_START_DATE.date()} to match Fama-French data availability.")
 
     #########################
     # CPI data from FRED
@@ -222,8 +228,6 @@ def crsp_m(data_path, start_date="1973-01-31", end_date="2023-12-31",
     
     crsp_m["industry"] = crsp_m["siccd"].apply(assign_industry)
     
-    # Replace missing excess returns with 0
-    crsp_m['ret_excess'] = (crsp_m['ret_excess'].fillna(0))
     
     if missing_data_info is True: 
         
@@ -248,9 +252,14 @@ def crsp_m(data_path, start_date="1973-01-31", end_date="2023-12-31",
         missing_data_summary_sorted = (missing_data_summary
                                        .sort_values(by='Missing Percentage', 
                                         ascending=False))
-
         
+        # Replace missing excess returns with 0
+        crsp_m['ret_excess'] = (crsp_m['ret_excess'].fillna(0))
+
         return crsp_m, missing_data_summary_sorted
+    
+    # Replace missing excess returns with 0
+    crsp_m['ret_excess'] = (crsp_m['ret_excess'].fillna(0))
     
     return crsp_m
 
@@ -264,21 +273,30 @@ def gfd(gfd_path, start_date="1973-01-31", end_date="2023-12-31"):
     - end_date (str): End date for Fama-French data.
 
     Returns:
-    - pd.DataFrame: Observed factors panel with MKT-RF and GFD factors.
+    - pd.DataFrame: Observed factors panel with GFD factors + MKT-RF.
     """
     
     start_date = pd.to_datetime(start_date)
     end_date = pd.to_datetime(end_date)
+    
+    # Guard against start_date before July 1926 (Fama-French data availability)
+    MIN_START_DATE = pd.to_datetime("1926-07-01")
+    if start_date < MIN_START_DATE + pd.DateOffset(months=1):
+        raise ValueError(f"start_date must be at least one month after {MIN_START_DATE.date()} to retrieve Fama-French data.")
+    
+    # Calculate one-month-before date for FF data
+    ff_start_date = start_date - pd.DateOffset(months=1)
 
     # Load MKT-RF from Fama-French
     mkt_factor = (pdr.DataReader("F-F_Research_Data_Factors", "famafrench",
-                                 start="1972-12-31", 
+                                 start=ff_start_date, 
                                  end=end_date)[0][['Mkt-RF']]
                     .divide(100)
                     .reset_index(names="month")
                     .assign(month=lambda x: pd.to_datetime(x["month"].astype(str)))
                     .rename(str.lower, axis="columns"))
-    mkt_factor['month'] = mkt_factor['month'].dt.to_period('M').dt.to_timestamp('M')
+    mkt_factor['month'] = (mkt_factor['month'].dt.to_period('M')
+                                              .dt.to_timestamp('M'))
 
     # Load GFD data
     obs_F = pd.read_csv(gfd_path)
