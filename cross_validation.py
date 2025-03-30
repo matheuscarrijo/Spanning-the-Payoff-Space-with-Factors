@@ -268,7 +268,7 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
                     Y_train, Y_val = Y[train_index], Y[val_index]
 
                     if param_name == 'lambda_1':
-                        B_candidate, _ = growl(
+                        B_candidate, _ = growl_fista(
                             X_train, Y_train,
                             lambda_1=v,
                             lambda_2=lam2_fixed,
@@ -280,7 +280,7 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
                             verbose=False
                         )
                     elif param_name == 'lambda_2':
-                        B_candidate, _ = growl(
+                        B_candidate, _ = growl_fista(
                             X_train, Y_train,
                             lambda_1=lam1_fixed,
                             lambda_2=v,
@@ -292,7 +292,7 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
                             verbose=False
                         )
                     elif param_name == 'ramp_size':
-                        B_candidate, _ = growl(
+                        B_candidate, _ = growl_fista(
                             X_train, Y_train,
                             lambda_1=lam1_fixed,
                             lambda_2=lam2_fixed,
