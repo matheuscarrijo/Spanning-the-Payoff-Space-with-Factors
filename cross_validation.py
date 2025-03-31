@@ -64,7 +64,8 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
     """
     Conducts a staged parameter refinement by narrowing down the search space
     around the best parameters found in each stage. Stage 1 uses user-defined
-    parameter grids (lambda1_list_start, lambda2_list_start, ramp_size_list_start).
+    parameter grids (lambda1_list_start, lambda2_list_start, 
+                     ramp_size_list_start).
 
     For each subsequent stage i = 2, ..., n_stages:
       - Measures how much CV MSE improved from the previous stage.
@@ -72,15 +73,15 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
         additive delta (for ramp_size) based on the improvement size.
       - If improvement is below 'min_improvement', we stop early.
 
-    Optionally plots the CV performance vs. each parameter after the final stage
-    (controlled by `plot`). Verbose printing is controlled by `verbose`.
+    Optionally plots the CV performance vs. each parameter after the final 
+    stage (controlled by `plot`). Verbose printing is controlled by `verbose`.
 
     Parameters
     ----------
     X, Y : np.array
         Input and output data (already scaled) for the growl regression.
     cross_validate_fn : callable
-        A function that performs cross-validation (e.g. `cross_validate_growl`).
+        A function that performs cross-validation (e.g.`cross_validate_growl`).
     lambda1_list_start : array-like
         The grid of lambda_1 values to use in Stage 1.
     lambda2_list_start : array-like
@@ -88,27 +89,32 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
     ramp_size_list_start : array-like
         The grid of ramp_size values to use in Stage 1.
     n_stages : int, default=3
-        The total number of stages (refinements) to perform (maximum, ignoring early stopping).
+        The total number of stages (refinements) to perform (maximum, ignoring 
+        early stopping).
     n_splits : int, default=5
         Number of folds for KFold in cross-validation.
     random_state : int, default=42
         Random seed for reproducibility in cross-validation.
     plot : bool, default=True
-        Whether to plot the CV performance vs. each parameter after the final stage.
+        Whether to plot the CV performance vs. each parameter after the final 
+        stage.
     verbose : bool, default=True
         Whether to print progress and intermediate CV MSEs.
     min_improvement : float or None, default=1e-3
         If the relative improvement in MSE from the previous stage
-        is below this value, we stop refining early. Set to None (or 0) to disable.
+        is below this value, we stop refining early. Set to None (or 0) to 
+        disable.
 
     Returns
     -------
     best_score_final : float
         The best MSE score found in the final (or last completed) stage.
     best_params_final : tuple
-        The best (lambda1, lambda2, ramp_size) found in the final (or last completed) stage.
+        The best (lambda1, lambda2, ramp_size) found in the final (or last 
+        completed) stage.
     best_B_final : np.array
-        The coefficient matrix corresponding to the best parameters in the final stage.
+        The coefficient matrix corresponding to the best parameters in the 
+        final stage.
     all_stages_results : list
         A list with results from all stages, e.g.:
             [ (best_score_1, best_params_1, best_B_1, all_results_1),
@@ -180,13 +186,15 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
     if verbose:
         print(f"Best params (Stage 1) = {best_params_1}, CV MSE = {best_score_1:.4f}\n")
 
-    all_stages_results.append((best_score_1, best_params_1, best_B_1, all_results_1))
+    all_stages_results.append((best_score_1, best_params_1, best_B_1, 
+                               all_results_1))
 
     current_best_score = best_score_1
     current_best_params = best_params_1
     current_best_B = best_B_1
 
-    # We'll define "last_score" to measure improvement from one stage to the next
+    # We'll define "last_score" to measure improvement from one stage to the
+    # next
     # Since Stage 1 has no previous stage, define last_score=best_score_1
     last_score = best_score_1
 
@@ -202,7 +210,8 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
         if stage_i == 2:
             improvement = 1.0  # big
         else:
-            improvement = (last_score - current_best_score) / last_score if last_score > 0 else 1.0
+            improvement = ((last_score - current_best_score) / last_score if 
+                           last_score > 0 else 1.0)
 
         # Optionally, if improvement is extremely small => stop
         if (min_improvement is not None) and (improvement < min_improvement):
@@ -214,8 +223,10 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
         factor, delta = choose_factor_delta(improvement)
 
         # Build new grids around previous best
-        lambda1_list = around_log_space(lam1_prev, factor=factor, num=len(lambda1_list_start))
-        lambda2_list = around_log_space(lam2_prev, factor=factor, num=len(lambda2_list_start))
+        lambda1_list = around_log_space(lam1_prev, factor=factor, 
+                                        num=len(lambda1_list_start))
+        lambda2_list = around_log_space(lam2_prev, factor=factor, 
+                                        num=len(lambda2_list_start))
         ramp_size_list = around_perc(rs_prev, delta=delta)
         
         if stage_i > 2:
@@ -243,7 +254,8 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
             print(f"Best params (Stage {stage_i}) = {best_params_i}, CV MSE = {best_score_i:.4f}\n")
 
         # Store results
-        all_stages_results.append((best_score_i, best_params_i, best_B_i, all_results_i))
+        all_stages_results.append((best_score_i, best_params_i, best_B_i, 
+                                   all_results_i))
 
         # Update "current best" for the next iteration
         last_score = current_best_score
@@ -258,8 +270,10 @@ def grid_search_CV(X, Y, cross_validate_fn, lambda1_list_start,
 
     if plot:
         # Helper: 1D sweep for a single parameter while fixing others
-        def sweep_one_param(X, Y, param_name, values, lam1_fixed, lam2_fixed, rs_fixed):
-            kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+        def sweep_one_param(X, Y, param_name, values, lam1_fixed, lam2_fixed, 
+                            rs_fixed):
+            kf = KFold(n_splits=n_splits, shuffle=True, 
+                       random_state=random_state)
             results = []
             for v in values:
                 scores = []

@@ -1,6 +1,6 @@
-###############################################################################
-############################ Importing Packages ###############################
-###############################################################################
+#======================
+# IMPORTING PACKAGES
+#======================
 
 import numpy as np
 import pandas as pd
@@ -17,15 +17,15 @@ from growl import growl_fista
 from data import crsp_m, gfd, return_panels
 from cross_validation import grid_search_CV, cross_validate_growl
 
-###############################################################################
-
-################### Get asset returns and observed factors ####################
+#=============================================
+# GET ASSET RETURNS AND OBSERVED FACTORS  
+#=============================================
 
 # Step 1: Load CRSP data
 crsp_m = crsp_m(data_path="data/CRSP-Stock-Monthly.csv",
                 start_date="1973-01-31",
                 end_date="2023-12-31")
-# Step 2: Load observed factors (Fama-French + Global Factor Data)
+# Step 2: Load observed factors (Global Factor Data + Market from FF database)
 obs_f_gfd = gfd(gfd_path="data/[usa]_[all_factors]_[monthly]_[vw_cap].csv",
                   start_date="1973-01-31",
                   end_date="2023-12-31")
@@ -33,6 +33,7 @@ obs_f_gfd = gfd(gfd_path="data/[usa]_[all_factors]_[monthly]_[vw_cap].csv",
 ret_panel, ret_panel_comnam, aug_ret_panel = return_panels(crsp_m)
 
 # Save in csv format
+
 #crsp_m.to_csv("data/crsp_m.csv")
 #obs_f_gfd.to_csv('data/obs_f_gfd.csv')
 #ret_panel.to_csv("data/ret_panel.csv")
@@ -41,11 +42,8 @@ ret_panel, ret_panel_comnam, aug_ret_panel = return_panels(crsp_m)
 #ret_pivot.to_csv("data/ret_pivot.csv")
 #aug_ret_pivot.to_csv("data/aug_ret_pivot.csv")
 
-
-####################### just load the preprocessed data #######################
-
-# # If you already have the required datasets, just upload:
-
+# If you already have the required datasets, just upload:
+    
 # crsp_m = pd.read_csv("data/crsp_m.csv", index_col=0)
 # obs_f_gfd = pd.read_csv("data/obs_f_gfd.csv", index_col=0)
 # ret_panel = pd.read_csv("data/ret_panel.csv", index_col=0)
@@ -54,106 +52,101 @@ ret_panel, ret_panel_comnam, aug_ret_panel = return_panels(crsp_m)
 # ret_pivot = pd.read_csv("data/ret_pivot.csv", index_col=0)
 # aug_ret_pivot = pd.read_csv("data/aug_ret_pivot.csv", index_col=0)
 
-###############################################################################
-########### Factors estimation using PCA as in Stock and Watson (2002) ########
-###############################################################################
+#============================================================
+# FACTORS ESTIMATION USING PCA AS IN Stock and Watson (2002) 
+#============================================================
 
-# Create output directory if it doesn't exist
-output_dir = "output"
-os.makedirs(output_dir, exist_ok=True)
-
-######################## ESTIMATION WITHOUT LAGS ##############################
-
-ret_panel = "data/ret_panel.csv"
-jj = 2
-DEMEAN = 2
-# kmax = 10
-results_ret_k10 = pca_stock_watson(ret_panel, kmax=10, jj=jj, DEMEAN=DEMEAN)
+# ESTIMATION WITHOUT LAGS
+# ret_panel = "data/ret_panel.csv"
+jj = 2 # an integer indicating the information criterion used for selecting the 
+       # number of factors; it can take on  the following values:
+       #         1 (information criterion PC_p1)
+       #         2 (information criterion PC_p2)
+       #         3 (information criterion PC_p3)       
+       # This information criterions comes from Bai and Ng (2002)  
+DEMEAN = 2 # an integer indicating the type of transformation performed on each 
+           # series in 'ret_panel' before the factors are estimated; it can 
+           # take on the following values:
+           #     0 (no transformation)
+           #     1 (demean only)
+           #     2 (demean and standardize)
+           #     3 (recursively demean and then standardize) 
+kmax = 10   # an integer indicating the maximum number of factors to be 
+            # estimated; if set to 99, the number of factors selected is forced
+            # to equal 8    
+            
+# results_ret_k10 is the list [pred, ehat, Fhat, lamhat, ve2, x2].
+results_ret_k10 = pca_stock_watson(ret_panel, kmax=kmax, jj=jj, DEMEAN=DEMEAN)
 # kmax = 5
-results_ret_k5 = pca_stock_watson(ret_panel, kmax=5, jj=jj, DEMEAN=DEMEAN)
+# results_ret_k5 = pca_stock_watson(ret_panel, kmax=5, jj=jj, DEMEAN=DEMEAN)
 
-######################### ESTIMATION WITH LAGS ################################
-
-aug_ret_panel = "data/aug_ret_panel.csv"
+# ESTIMATION WITH LAGS 
+# aug_ret_panel = "data/aug_ret_panel.csv"
 # kmax = 15
-results_aug_15 = pca_stock_watson(aug_ret_panel, kmax=15, jj=jj, DEMEAN=DEMEAN)
+#results_aug_15 = pca_stock_watson(aug_ret_panel, kmax=15, jj=jj, DEMEAN=DEMEAN)
 # results_aug_15 = [pred, ehat, Fhat, lamhat, ve2, x2] 
 # kmax = 5
-results_aug_5 = pca_stock_watson(aug_ret_panel, kmax=5, jj=jj, DEMEAN=DEMEAN)
+# results_aug_5 = pca_stock_watson(aug_ret_panel, kmax=5, jj=jj, DEMEAN=DEMEAN)
 
-################## just load the datasets from PCA estimation #################
+# SAVE OUTPUTS IN CSV FORMAT 
+# Create output directory if it doesn't exist
+#os.makedirs("outputs", exist_ok=True)
+#results_ret_k10[0].to_csv("outputs/pred.csv") 
+#results_ret_k10[3].to_csv("outputs/gamma_hat.csv")
 
-# # If you already have the required datasets, no need to do all the estimation 
-# # again. Just upload:
-# # Load results for ret_panel with kmax=10, jj=2, DEMEAN=2
-# loaded_results = load_pca_results("ret_panel", kmax=10, jj=2, DEMEAN=2)
+# Load the data in the following way if you have the datasets stored 
+#obs_f_gfd = pd.read_csv("output/obs_f_gfd.csv", index_col=0)
 
-# # Unpack the results
-# (Fhat, ehat, pred, x2, lamhat, ve2, R2, 
-#  mR2, mR2_F, R2_T, t10_s, t10_mR2) = loaded_results
+#PCs = pd.read_csv("output/pred.csv", index_col=0)
+PCs = results_ret_k10[0]
 
-###############################################################################
-######################## Regularization Procedures ############################
-###############################################################################
-
-# Load and normalizes data 
-obs_f_gfd = pd.read_csv("output/obs_f_gfd.csv", index_col=0)
-PCs = pd.read_csv("output/pred.csv", index_col=0)
-gamma_hat = pd.read_csv("output/lamhat.csv", index_col=0)
+#gamma_hat = pd.read_csv("output/lamhat.csv", index_col=0)
+gamma_hat = results_ret_k10[3]
 
 # Normalize the features (X) and targets (Y)
 scaler_X = StandardScaler()
 scaler_Y = StandardScaler()
-
 obs_f_gfd_normalized = scaler_X.fit_transform(obs_f_gfd)
 PCs_normalized = scaler_Y.fit_transform(PCs)
 
-############################### LASSO #########################################
+#=============================
+# CROSS VALIDATION FOR GROWL 
+#=============================
 
-mtl = linear_model.MultiTaskLasso(
-        alpha=8.2, 
-        fit_intercept=False, 
-        copy_X=True, 
-        max_iter=1000, 
-        tol=1e-04, 
-        warm_start=False, 
-        random_state=None, 
-        selection='cyclic')
+# Define the hypter-parameters grids:
+#lambda1_list_start = np.logspace(-2, 3, 6)  # i.e. 0.01, 0.1, 1, 10, 100, 1000
+lambda1_list_start = np.logspace(1, 3, 3)
+#lambda2_list_start = np.logspace(-2, 3, 6)
+lambda2_list_start = np.logspace(-2, 0, 3)
+#ramp_size_list_start = [0.1, 0.3, 0.5, 0.7, 0.9]
+ramp_size_list_start = [0.5, 0.7, 0.9]
 
-mtl.fit(obs_f_gfd_normalized, PCs_normalized)
+# Just to test the CV algorithm:
+lambda1_list_start = np.logspace(1, 2, 2) 
+lambda2_list_start = np.logspace(-2, -1, 2)
+ramp_size_list_start = [0.7, 0.9]
 
-#print(mtl.coef_)
-#pd.DataFrame(mtl.coef_, columns=obs_f_gfd.columns)
-beta_mtl = (pd.DataFrame(mtl.coef_, columns=obs_f_gfd.columns,
-                         index=gamma_hat.index)
-                         .loc[:, (pd.DataFrame(mtl.coef_, 
-                                  columns=obs_f_gfd.columns,) != 0)
-                         .any(axis=0)])
 
-############################### Elastic Net ###################################
+# Run CV with the adaptive grid refinement approach
+best_score, best_params, best_B, stages_info = grid_search_CV(
+    obs_f_gfd_normalized, PCs_normalized,
+    cross_validate_fn=cross_validate_growl,
+    lambda1_list_start=lambda1_list_start,
+    lambda2_list_start=lambda2_list_start,
+    ramp_size_list_start=ramp_size_list_start,
+    n_stages=5,        # up to 5 refinement stages
+    n_splits=5,
+    random_state=42,
+    plot=True,
+    verbose=True,
+    min_improvement=1e-3  # or None if we don't want early stopping
+)
 
-mten = linear_model.MultiTaskElasticNet(
-        alpha=27.6, # 27.5
-        l1_ratio=0.515, # 0.515
-        fit_intercept=False, 
-        copy_X=True, 
-        max_iter=1000, 
-        tol=1e-08, 
-        warm_start=False, 
-        random_state=None, 
-        selection='cyclic')
+print("Best params found:", best_params, "with CV MSE:", best_score)
 
-mten.fit(obs_f_gfd_normalized, PCs_normalized)
-
-#print(mtl.coef_)
-#pd.DataFrame(mtl.coef_, columns=obs_f_gfd.columns)
-beta_mten = (pd.DataFrame(mten.coef_, columns=obs_f_gfd.columns, 
-                          index=gamma_hat.index)
-                          .loc[:, (pd.DataFrame(mten.coef_, 
-                                columns=obs_f_gfd.columns) != 0)
-                          .any(axis=0)])
-
-################################## GrOWL ######################################
+#==========
+# GrOWL 
+#==========
 
 # B_growl_oscar, _ = growl_fista(obs_f_gfd_normalized, PCs_normalized, w=None, 
 #                           lambda_1=1.0, lambda_2=0.5, ramp_size=1, 
@@ -174,14 +167,14 @@ B_growl_oscar = pd.DataFrame(B_growl_oscar, index=obs_f_gfd.columns,
 
 B_growl_oscar.to_csv("output/B_growl_oscar.csv")
 
-# Transform in pandas dataframe without zero columns
+# Transform in pandas dataframe without columns 
 B_growl_oscar_without_zeros = (pd.DataFrame(B_growl_oscar.T, columns=obs_f_gfd.columns, 
                               index=gamma_hat.index)
                               .loc[:, (pd.DataFrame(B_growl_oscar.T, 
                                        columns=obs_f_gfd.columns) != 0)
                               .any(axis=0)])
 
-# Heatmap of beta_estimated
+# Heatmap of estimated B
 plt.figure(figsize=(12, 8))
 sns.heatmap(B_growl_oscar, cmap="coolwarm", 
             annot=False, cbar=True)
@@ -279,36 +272,53 @@ for group_id, factor_names in grouped_rows.items():
     plt.title(f"Heatmap of Factor Loadings - Group {group_id}", fontsize=16)
     plt.show()
 
+#==================== OTHER REGULARIZATION PROCEDURES ========================
 
-############################## CROSS VALIDATION ###############################
+#==========
+# LASSO 
+#==========
 
-# Define the hypter-parameters grids:
-#lambda1_list_start = np.logspace(-2, 3, 6)  # i.e. 0.01, 0.1, 1, 10, 100, 1000
-lambda1_list_start = np.logspace(1, 3, 3)
-#lambda2_list_start = np.logspace(-2, 3, 6)
-lambda2_list_start = np.logspace(-2, 0, 3)
-#ramp_size_list_start = [0.1, 0.3, 0.5, 0.7, 0.9]
-ramp_size_list_start = [0.5, 0.7, 0.9]
+# mtl = linear_model.MultiTaskLasso(
+#         alpha=8.2, 
+#         fit_intercept=False, 
+#         copy_X=True, 
+#         max_iter=1000, 
+#         tol=1e-04, 
+#         warm_start=False, 
+#         random_state=None, 
+#         selection='cyclic')
 
-# Just to test the CV algorithm:
-lambda1_list_start = np.logspace(1, 2, 2) 
-lambda2_list_start = np.logspace(-2, -1, 2)
-ramp_size_list_start = [0.7, 0.9]
+# mtl.fit(obs_f_gfd_normalized, PCs_normalized)
 
+#print(mtl.coef_)
+#pd.DataFrame(mtl.coef_, columns=obs_f_gfd.columns)
+# beta_mtl = (pd.DataFrame(mtl.coef_, columns=obs_f_gfd.columns,
+#                          index=gamma_hat.index)
+#                          .loc[:, (pd.DataFrame(mtl.coef_, 
+#                                   columns=obs_f_gfd.columns,) != 0)
+#                          .any(axis=0)])
 
-# Run CV with the adaptive grid refinement approach
-best_score, best_params, best_B, stages_info = grid_search_CV(
-    obs_f_gfd_normalized, PCs_normalized,
-    cross_validate_fn=cross_validate_growl,
-    lambda1_list_start=lambda1_list_start,
-    lambda2_list_start=lambda2_list_start,
-    ramp_size_list_start=ramp_size_list_start,
-    n_stages=5,        # up to 5 refinement stages
-    n_splits=5,
-    random_state=42,
-    plot=True,
-    verbose=True,
-    min_improvement=1e-3  # or None if we don't want early stopping
-)
+#=========================
+# MULTI-TASK ELASTIC NET
+#=========================
 
-print("Best params found:", best_params, "with CV MSE:", best_score)
+# mten = linear_model.MultiTaskElasticNet(
+#        alpha=27.6, # 27.5
+#         l1_ratio=0.515, # 0.515
+#         fit_intercept=False, 
+#         copy_X=True, 
+#         max_iter=1000, 
+#         tol=1e-08, 
+#         warm_start=False, 
+#         random_state=None, 
+#         selection='cyclic')
+
+# mten.fit(obs_f_gfd_normalized, PCs_normalized)
+
+#print(mtl.coef_)
+#pd.DataFrame(mtl.coef_, columns=obs_f_gfd.columns)
+# beta_mten = (pd.DataFrame(mten.coef_, columns=obs_f_gfd.columns, 
+#                           index=gamma_hat.index)
+#                           .loc[:, (pd.DataFrame(mten.coef_, 
+#                                 columns=obs_f_gfd.columns) != 0)
+#                           .any(axis=0)])

@@ -64,7 +64,8 @@ def pca_stock_watson(data, kmax=99, jj=2, DEMEAN=2):
 
     series = dum.columns.values  # Variable names
     tcode = dum.iloc[0, :]       # Transformation codes
-    rawdata = dum.iloc[1:, :]    # Data excluding first row (transformation codes)
+    rawdata = dum.iloc[1:, :]    # Data excluding first row (transformation 
+                                 # codes)
 
     # Ensure 'month' is the index
     if 'month' in rawdata.columns:
@@ -81,8 +82,10 @@ def pca_stock_watson(data, kmax=99, jj=2, DEMEAN=2):
     # some series have been first or second differenced
     if any(x in tcode for x in [2, 5]):  # Check if 2 or 5 is in tcode
         yt = yt.iloc[1:, :]  # Drop first row
-        if any(x in tcode for x in [3, 4, 6, 7]):  # Check if 3, 4, 6, or 7 is in tcode
-            yt = yt.iloc[1:, :]  # Drop second row (since it's differentiated twice)
+        if any(x in tcode for x in [3, 4, 6, 7]):  # Check if 3, 4, 6, or 7 is 
+                                                   # in tcode
+            yt = yt.iloc[1:, :]  # Drop second row (since it's differentiated 
+                                 # twice)
 
 
     # Remove outliers
